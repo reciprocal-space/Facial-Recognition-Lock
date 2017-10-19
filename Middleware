@@ -1,0 +1,71 @@
+var twilio = require('twilio'),
+// Require previously installed modules using npm - need to do npm installation!!
+    SerialPort = require("serialport").SerialPort,
+    express = require('express');
+
+//set up express web server and serialPort connection
+//may need to change the name of active usb port (Arduino->Tools-Port menu)
+var app = express();
+
+//create the sendMessage function which is called to generate a TwiML response for the user
+//TwiML is the subset of XML that twilio uses to pass instructions
+//here twilio is told to respond to the SMS message we have received with another message
+//Example: user sends unlock and twilio sends back unlocking
+function sendMessage(res, message){
+	var resp = new twilio.TwimlResponse();
+	resp.message(message);
+	res.type('text/xml');
+	res.send(resp.toString());
+}
+
+var serialPort = new SerialPort ("/dev/tty.usbmodem1411", {
+	baudrate: 9600
+});
+
+//Set up http route called /sms
+//Telling express to accept POST requests through the /sms route and parse the
+//POST body using its bodyParser which will make it easier to access the parameters
+//sent by twilios incoming sms
+//add in twilio webhook middleware to validate that the request is actually from twilio
+//add in relevant authenitcation token
+app.use(express).bodyParser());
+//now that a route for an incoming sms is established, we need to confirm that the number the sms is from has permission to lock and unlock the door
+//we check from the POST parameter and log whether or not the number is verified - the phone number as well as the authentification code verify permissions
+//will need to replace this number with relevant number and authentication code
+app.post('/sms', twilio.webhook('e4b060ec4571fde9a9f9ea0d4878e676', {host:'foo.herokuapp.com', protocol:'https' }), function(req, res){
+	if(req.body.From == "+15133606990" &&req.body.Body == "ABC123"){
+		console.log("verified number!");
+		//we can now add an event handler to send and receieve data from the Arduino's serial connection
+        //the event handler receives Serial data from the Arduino corresponding to either U or L
+        //this value is then returned as an sms to the user via the sendMessage function
+        serialPort.once('data', function(data){
+	        if(data.data.toString().indexOf('U') > -1){ //check if Arduino returned U for unlocking
+	            sendMessage(res, 'Unlocking!');
+	        }
+	        else if (data.toString().indexOf('L') > -1){
+	            sendMessage(res, 'Locking!');
+	        }
+	        else{
+		        sendMessage(res, 'ERROR');
+	        }
+            console.log('data received: ' + data)
+        });
+		//here V is written to the Arduinos serial connection to tell it that a verified SMS has been received and it should lock/unlock the door
+        serialPort.write("V", function(err, results){
+	    if(err){
+		    console.log('err ' + err);
+	    }
+	    console.log('results ' + results);
+    });
+
+	}
+	else{
+		console.log("Access Denied");
+		sendMessage(res, "Warning: Unauthorized Attempt to Gain Entry!");
+	}
+});
+
+serialPort.open(function(){
+	app.listen(3000);
+	console.log('Listening on port 3000');
+});
