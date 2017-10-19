@@ -1,0 +1,36 @@
+//Aim to create a facial recognition system for a door lock, where using clarifai a subjects face will be analyzed
+//If the person has permission to open the door twilio will be used to send a message to the door and unlock it
+//If the person does not have permission to open the door, twilio will be used to send an alert message 
+#include
+
+Servo myservo;
+int servoPin =12;
+int lock = 0;
+int unlock = 180;
+
+void setup(){
+// Open a serial connection and tell it the servo is on pin 12
+Serial.begin(9600);
+myservo.attach(servoPin);
+myservo.write(lock);
+}
+
+void loop(){
+	//Read in a character from Serial connection and write it to a string
+	while(Serial.available()){
+		char inChar = (char)Serial.read();
+		if(inChar == 'V'){ //end character for locking
+			if (myservo.read() >= 90) {
+				Serial.println("L");
+				myservo.write(lock);
+				delay(3000);
+			}
+			else{
+				Serial.println("U");
+				myservo.write(unlock);
+				delay(3000);
+			}
+		}
+	}
+}
+
