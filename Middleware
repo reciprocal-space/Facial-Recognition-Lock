@@ -33,7 +33,7 @@ app.use(express).bodyParser());
 //we check from the POST parameter and log whether or not the number is verified - the phone number as well as the authentification code verify permissions
 //will need to replace this number with relevant number and authentication code
 app.post('/sms', twilio.webhook('e4b060ec4571fde9a9f9ea0d4878e676', {host:'foo.herokuapp.com', protocol:'https' }), function(req, res){
-	if(req.body.From == "+15133606990" &&req.body.Body == "ABC123"){
+	if(req.body.From == "insert phone number" &&req.body.Body == "ABC123"){
 		console.log("verified number!");
 		//we can now add an event handler to send and receieve data from the Arduino's serial connection
         //the event handler receives Serial data from the Arduino corresponding to either U or L
